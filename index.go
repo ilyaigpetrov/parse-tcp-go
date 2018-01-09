@@ -15,7 +15,7 @@ type Packet struct {
   IP *layers.IPv4
   TCP *layers.TCP
   Recompile func() ([]byte, error)
-  Print func()
+  Print func(...int)
 }
 
 func ParseTCPPacket(packetData []byte) (packet Packet, err error) {
@@ -53,7 +53,7 @@ func ParseTCPPacket(packetData []byte) (packet Packet, err error) {
     return newBuffer.Bytes(), nil
 
   }
-  packet.Print = func() {
+  packet.Print = func(payloadLimits ...int) {
 
     fmt.Printf("Packet from %s:%d to %s:%d %d", ip.SrcIP.String(), tcp.SrcPort, ip.DstIP.String(), tcp.DstPort, tcp.Seq)
     flags := strings.Split("FIN SYN RST PSH ACK URG ECE CWR NS", " ")
@@ -67,8 +67,12 @@ func ParseTCPPacket(packetData []byte) (packet Packet, err error) {
       }
     }
     fmt.Printf("\n")
+    payloadLimit := 1000
+    if len(payloadLimits) > 0 {
+      payloadLimit = payloadLimits[0]
+    }
     if len(tcp.Payload) != 0 {
-      fmt.Println("TCP PAYLOAD:", string(tcp.Payload[:int(math.Min(float64(len(tcp.Payload)), float64(1000)))]))
+      fmt.Println("TCP PAYLOAD:", string(tcp.Payload[:int(math.Min(float64(len(tcp.Payload)), float64(payloadLimit)))]))
     }
   }
 
