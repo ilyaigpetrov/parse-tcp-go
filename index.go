@@ -4,13 +4,18 @@ import (
   "errors"
   "github.com/google/gopacket"
   "github.com/google/gopacket/layers"
-  "fmt"
+  "log"
   "gopkg.in/oleiade/reflections.v1"
   "strings"
   "math"
   "encoding/hex"
   "bytes"
+  "os"
+  "fmt"
 )
+
+var infolog = log.New(os.Stdout,
+    "", 0)
 
 type Packet struct {
   Gopacket gopacket.Packet
@@ -27,7 +32,7 @@ func ParseTCPPacket(packetData []byte) (packet Packet, err error) {
   ipLayer := packet.Gopacket.Layer(layers.LayerTypeIPv4)
   if ipLayer == nil {
     err = errors.New("No IP layer!")
-    fmt.Println(hex.Dump(packetData))
+    infolog.Println(hex.Dump(packetData))
     return
   }
   packet.IP = ipLayer.(*layers.IPv4)
@@ -74,24 +79,24 @@ func ParseTCPPacket(packetData []byte) (packet Packet, err error) {
 
   packet.Print = func(payloadLimits ...int) {
 
-    fmt.Printf("Packet from %s:%d to %s:%d %d", ip.SrcIP.String(), tcp.SrcPort, ip.DstIP.String(), tcp.DstPort, tcp.Seq)
+    result := fmt.Sprintf("Packet from %s:%d to %s:%d seq=%d ack=%d", ip.SrcIP.String(), tcp.SrcPort, ip.DstIP.String(), tcp.DstPort, tcp.Seq, tcp.Ack)
     flags := strings.Split("FIN SYN RST PSH ACK URG ECE CWR NS", " ")
     for _, flag := range flags {
       val, err := reflections.GetField(tcp, flag)
       if err != nil {
-        fmt.Println(err, "REFLECT ERROR!")
+        infolog.Println(err, "REFLECT ERROR!")
       }
       if val.(bool) {
-        fmt.Printf(" %s", flag)
+        result += fmt.Sprintf(" %s", flag)
       }
     }
-    fmt.Printf("\n")
-    payloadLimit := 1000
+    infolog.Println(result)
+    payloadLimit := 100
     if len(payloadLimits) > 0 {
       payloadLimit = payloadLimits[0]
     }
     if len(tcp.Payload) != 0 {
-      fmt.Println("TCP PAYLOAD:", toString(tcp.Payload[:int(math.Min(float64(len(tcp.Payload)), float64(payloadLimit)))]))
+      infolog.Println("TCP PAYLOAD:", toString(tcp.Payload[:int(math.Min(float64(len(tcp.Payload)), float64(payloadLimit)))]))
     }
   }
 
